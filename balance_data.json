@@ -58,5 +58,15 @@
     "quota": 875.0,
     "used": 0.0,
     "timestamp": 1763878643.7905967
+  },
+  "AnyRouter1_cookies": {
+    "quota": 257.71,
+    "used": 42.29,
+    "timestamp": 1763903215.9834554
+  },
+  "AnyRouter2_cookies": {
+    "quota": 125.0,
+    "used": 0.0,
+    "timestamp": 1763903230.113797
   }
 }
