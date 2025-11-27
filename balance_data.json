@@ -60,23 +60,23 @@
     "timestamp": 1763878643.7905967
   },
   "AnyRouter1_cookies": {
-    "quota": 332.71,
-    "used": 42.29,
-    "timestamp": 1764123954.063802
+    "quota": 346.14,
+    "used": 53.86,
+    "timestamp": 1764210123.6039119
   },
   "AnyRouter2_cookies": {
-    "quota": 200.0,
+    "quota": 225.0,
     "used": 0.0,
-    "timestamp": 1764123963.8009632
+    "timestamp": 1764210132.181416
   },
   "AnyRouter3_cookies": {
-    "quota": 150.0,
+    "quota": 175.0,
     "used": 0.0,
-    "timestamp": 1764123934.270762
+    "timestamp": 1764210107.2414563
   },
   "AgentRouter主账号_cookies": {
     "quota": 408.57,
     "used": 11.43,
-    "timestamp": 1764123944.5365648
+    "timestamp": 1764210115.0293229
   }
 }
