@@ -60,18 +60,18 @@
     "timestamp": 1768976452.2607367
   },
   "AnyRouter主账号_cookies": {
-    "quota": 2320.03,
+    "quota": 2345.03,
     "used": 729.97,
-    "timestamp": 1771180532.9881167
+    "timestamp": 1771207435.283875
   },
   "AnyRouter二账号_cookies": {
-    "quota": 2264.06,
+    "quota": 2289.06,
     "used": 10.94,
-    "timestamp": 1771180542.2874403
+    "timestamp": 1771207444.5050452
   },
   "AnyRouter三账号_cookies": {
-    "quota": 850.0,
+    "quota": 875.0,
     "used": 0.0,
-    "timestamp": 1771180551.4186747
+    "timestamp": 1771207452.4814887
   }
 }
