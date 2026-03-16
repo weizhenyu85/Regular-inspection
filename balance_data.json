@@ -95,58 +95,58 @@
     "timestamp": 1772456280.380248
   },
   "AnyRouter1_cookies": {
-    "quota": 833.33,
-    "used": 16.67,
-    "timestamp": 1773645363.5654187
+    "quota": 832.96,
+    "used": 17.04,
+    "timestamp": 1773666590.7751412
   },
   "AnyRouter2_cookies": {
-    "quota": 922.77,
-    "used": 27.23,
-    "timestamp": 1773645372.323519
+    "quota": 922.44,
+    "used": 27.56,
+    "timestamp": 1773666598.649342
   },
   "AnyRouter3_cookies": {
-    "quota": 1557.68,
-    "used": 17.32,
-    "timestamp": 1773645380.4251297
+    "quota": 1555.07,
+    "used": 19.93,
+    "timestamp": 1773666607.2254083
   },
   "AnyRouter4_cookies": {
-    "quota": 1554.54,
-    "used": 20.46,
-    "timestamp": 1773645388.272473
+    "quota": 1554.31,
+    "used": 20.69,
+    "timestamp": 1773666615.4887054
   },
   "AnyRouter5_cookies": {
     "quota": 2757.08,
     "used": 1067.92,
-    "timestamp": 1773645397.0675364
+    "timestamp": 1773666623.999492
   },
   "AnyRouter6_cookies": {
-    "quota": 798.4,
-    "used": 176.6,
-    "timestamp": 1773645405.0767508
+    "quota": 798.09,
+    "used": 176.91,
+    "timestamp": 1773666633.466801
   },
   "AnyRouter7_cookies": {
-    "quota": 1005.57,
-    "used": 19.43,
-    "timestamp": 1773645414.6834576
+    "quota": 1005.4,
+    "used": 19.6,
+    "timestamp": 1773666642.2673573
   },
   "AnyRouter8_cookies": {
-    "quota": 1037.46,
-    "used": 12.54,
-    "timestamp": 1773645423.6698713
+    "quota": 1037.32,
+    "used": 12.68,
+    "timestamp": 1773666652.2622795
   },
   "AnyRouter9_cookies": {
-    "quota": 1108.63,
-    "used": 16.37,
-    "timestamp": 1773645432.282661
+    "quota": 1108.47,
+    "used": 16.53,
+    "timestamp": 1773666662.112327
   },
   "AnyRouter10_cookies": {
-    "quota": 1280.61,
-    "used": 19.39,
-    "timestamp": 1773645440.4015157
+    "quota": 1280.15,
+    "used": 19.85,
+    "timestamp": 1773666671.4160879
   },
   "AnyRouter11_cookies": {
-    "quota": 2828.3,
-    "used": 171.7,
-    "timestamp": 1773645449.2432013
+    "quota": 2824.15,
+    "used": 175.85,
+    "timestamp": 1773666680.6043098
   }
 }
