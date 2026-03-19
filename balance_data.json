@@ -95,58 +95,58 @@
     "timestamp": 1772456280.380248
   },
   "AnyRouter1_cookies": {
-    "quota": 880.5,
+    "quota": 905.5,
     "used": 19.5,
-    "timestamp": 1773860299.6544566
+    "timestamp": 1773886001.0611162
   },
   "AnyRouter2_cookies": {
-    "quota": 969.61,
+    "quota": 994.61,
     "used": 30.39,
-    "timestamp": 1773860308.2549403
+    "timestamp": 1773886009.3973935
   },
   "AnyRouter3_cookies": {
-    "quota": 1601.25,
-    "used": 23.75,
-    "timestamp": 1773860315.9190652
+    "quota": 1625.59,
+    "used": 24.41,
+    "timestamp": 1773886018.404332
   },
   "AnyRouter4_cookies": {
-    "quota": 1601.22,
-    "used": 23.78,
-    "timestamp": 1773860324.829005
+    "quota": 1625.55,
+    "used": 24.45,
+    "timestamp": 1773886027.5720003
   },
   "AnyRouter5_cookies": {
-    "quota": 2807.08,
+    "quota": 2832.08,
     "used": 1067.92,
-    "timestamp": 1773860333.3011389
+    "timestamp": 1773886035.6352127
   },
   "AnyRouter6_cookies": {
-    "quota": 842.96,
+    "quota": 867.96,
     "used": 182.04,
-    "timestamp": 1773860342.1743941
+    "timestamp": 1773886043.7908363
   },
   "AnyRouter7_cookies": {
-    "quota": 1052.75,
+    "quota": 1077.75,
     "used": 22.25,
-    "timestamp": 1773860350.7767825
+    "timestamp": 1773886051.4401677
   },
   "AnyRouter8_cookies": {
-    "quota": 1084.15,
+    "quota": 1109.15,
     "used": 15.85,
-    "timestamp": 1773860359.4346821
+    "timestamp": 1773886061.2361774
   },
   "AnyRouter9_cookies": {
-    "quota": 1153.04,
+    "quota": 1178.04,
     "used": 21.96,
-    "timestamp": 1773860368.3150465
+    "timestamp": 1773886070.814729
   },
   "AnyRouter10_cookies": {
-    "quota": 1327.37,
-    "used": 22.63,
-    "timestamp": 1773860377.338927
+    "quota": 1352.32,
+    "used": 22.68,
+    "timestamp": 1773886080.0626452
   },
   "AnyRouter11_cookies": {
-    "quota": 2858.85,
-    "used": 191.15,
-    "timestamp": 1773860386.383633
+    "quota": 2882.97,
+    "used": 192.03,
+    "timestamp": 1773886088.9156327
   }
 }
