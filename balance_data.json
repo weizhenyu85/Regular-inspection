@@ -95,63 +95,63 @@
     "timestamp": 1772456280.380248
   },
   "AnyRouter1_cookies": {
-    "quota": 250.0,
+    "quota": 275.0,
     "used": 0.0,
-    "timestamp": 1775675686.2737787
+    "timestamp": 1775700493.0763032
   },
   "AnyRouter2_cookies": {
-    "quota": 1384.07,
+    "quota": 1409.07,
     "used": 40.93,
-    "timestamp": 1775675695.2517538
+    "timestamp": 1775700501.5545135
   },
   "AnyRouter3_cookies": {
-    "quota": 1490.11,
+    "quota": 1515.11,
     "used": 34.89,
-    "timestamp": 1775675703.455021
+    "timestamp": 1775700510.6465695
   },
   "AnyRouter4_cookies": {
-    "quota": 2037.51,
+    "quota": 2062.51,
     "used": 112.49,
-    "timestamp": 1775675712.9391859
+    "timestamp": 1775700519.5057735
   },
   "AnyRouter5_cookies": {
-    "quota": 1965.94,
+    "quota": 1990.94,
     "used": 184.06,
-    "timestamp": 1775675722.6522982
+    "timestamp": 1775700527.4724894
   },
   "AnyRouter6_cookies": {
-    "quota": 3332.08,
+    "quota": 3357.08,
     "used": 1067.92,
-    "timestamp": 1775675732.2351623
+    "timestamp": 1775700536.2694101
   },
   "AnyRouter7_cookies": {
-    "quota": 1412.58,
+    "quota": 1437.58,
     "used": 187.42,
-    "timestamp": 1775675741.3343954
+    "timestamp": 1775700544.3381214
   },
   "AnyRouter8_cookies": {
-    "quota": 1622.92,
+    "quota": 1647.92,
     "used": 27.08,
-    "timestamp": 1775675752.4180632
+    "timestamp": 1775700552.5019019
   },
   "AnyRouter9_cookies": {
-    "quota": 1590.0,
+    "quota": 1615.0,
     "used": 35.0,
-    "timestamp": 1775675761.1395056
+    "timestamp": 1775700561.3199966
   },
   "AnyRouter10_cookies": {
-    "quota": 1666.15,
+    "quota": 1691.15,
     "used": 33.85,
-    "timestamp": 1775675771.3752468
+    "timestamp": 1775700570.0709813
   },
   "AnyRouter11_cookies": {
-    "quota": 1823.5,
+    "quota": 1848.5,
     "used": 51.5,
-    "timestamp": 1775675780.5673115
+    "timestamp": 1775700577.5923193
   },
   "AnyRouter12_cookies": {
-    "quota": 3226.47,
+    "quota": 3251.47,
     "used": 348.53,
-    "timestamp": 1775675789.3710387
+    "timestamp": 1775700585.009836
   }
 }
