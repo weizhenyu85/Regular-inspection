@@ -95,68 +95,68 @@
     "timestamp": 1772456280.380248
   },
   "AnyRouter1_cookies": {
-    "quota": 265.22,
-    "used": 9.78,
-    "timestamp": 1776133709.862371
+    "quota": 264.99,
+    "used": 10.01,
+    "timestamp": 1776152653.8697076
   },
   "AnyRouter2_cookies": {
     "quota": 400.0,
     "used": 0.0,
-    "timestamp": 1776133718.2144063
+    "timestamp": 1776152662.9876537
   },
   "AnyRouter3_cookies": {
     "quota": 1534.07,
     "used": 40.93,
-    "timestamp": 1776133727.2203724
+    "timestamp": 1776152670.845684
   },
   "AnyRouter4_cookies": {
     "quota": 1640.11,
     "used": 34.89,
-    "timestamp": 1776133736.2401288
+    "timestamp": 1776152678.7753456
   },
   "AnyRouter5_cookies": {
     "quota": 2187.51,
     "used": 112.49,
-    "timestamp": 1776133743.556774
+    "timestamp": 1776152688.2301726
   },
   "AnyRouter6_cookies": {
     "quota": 2115.94,
     "used": 184.06,
-    "timestamp": 1776133752.8575482
+    "timestamp": 1776152695.888556
   },
   "AnyRouter7_cookies": {
     "quota": 3482.08,
     "used": 1067.92,
-    "timestamp": 1776133760.5251026
+    "timestamp": 1776152704.6780837
   },
   "AnyRouter8_cookies": {
     "quota": 1562.58,
     "used": 187.42,
-    "timestamp": 1776133769.6063652
+    "timestamp": 1776152714.1644344
   },
   "AnyRouter9_cookies": {
     "quota": 1772.92,
     "used": 27.08,
-    "timestamp": 1776133778.7263083
+    "timestamp": 1776152721.9695554
   },
   "AnyRouter10_cookies": {
     "quota": 1740.0,
     "used": 35.0,
-    "timestamp": 1776133787.7889464
+    "timestamp": 1776152729.575045
   },
   "AnyRouter11_cookies": {
     "quota": 1816.15,
     "used": 33.85,
-    "timestamp": 1776133797.1547801
+    "timestamp": 1776152737.4847744
   },
   "AnyRouter12_cookies": {
     "quota": 1973.5,
     "used": 51.5,
-    "timestamp": 1776133806.3937907
+    "timestamp": 1776152745.6057005
   },
   "AnyRouter13_cookies": {
     "quota": 3376.47,
     "used": 348.53,
-    "timestamp": 1776133813.6770139
+    "timestamp": 1776152755.0840344
   }
 }
