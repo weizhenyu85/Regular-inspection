@@ -95,73 +95,73 @@
     "timestamp": 1772456280.380248
   },
   "AnyRouter1_cookies": {
-    "quota": 869.86,
-    "used": 105.14,
-    "timestamp": 1779202752.8544703
+    "quota": 869.79,
+    "used": 105.21,
+    "timestamp": 1779220251.4400578
   },
   "AnyRouter2_cookies": {
     "quota": 963.26,
     "used": 186.74,
-    "timestamp": 1779202762.1256492
+    "timestamp": 1779220259.9396842
   },
   "AnyRouter3_cookies": {
     "quota": 1260.39,
     "used": 14.61,
-    "timestamp": 1779202770.4042635
+    "timestamp": 1779220268.818194
   },
   "AnyRouter4_cookies": {
     "quota": 2409.07,
     "used": 40.93,
-    "timestamp": 1779202778.489063
+    "timestamp": 1779220276.985308
   },
   "AnyRouter5_cookies": {
     "quota": 2515.11,
     "used": 34.89,
-    "timestamp": 1779202787.0868242
+    "timestamp": 1779220286.1773238
   },
   "AnyRouter6_cookies": {
     "quota": 3061.32,
     "used": 113.68,
-    "timestamp": 1779202795.8000777
+    "timestamp": 1779220294.3867059
   },
   "AnyRouter7_cookies": {
     "quota": 2952.94,
     "used": 222.06,
-    "timestamp": 1779202804.1994686
+    "timestamp": 1779220302.1427603
   },
   "AnyRouter8_cookies": {
     "quota": 4357.08,
     "used": 1067.92,
-    "timestamp": 1779202812.4029408
+    "timestamp": 1779220311.180531
   },
   "AnyRouter9_cookies": {
     "quota": 2437.58,
     "used": 187.42,
-    "timestamp": 1779202822.2200956
+    "timestamp": 1779220320.2406778
   },
   "AnyRouter10_cookies": {
     "quota": 2647.92,
     "used": 27.08,
-    "timestamp": 1779202830.9687579
+    "timestamp": 1779220329.3226726
   },
   "AnyRouter11_cookies": {
     "quota": 2665.0,
     "used": 35.0,
-    "timestamp": 1779202839.57255
+    "timestamp": 1779220337.1833293
   },
   "AnyRouter12_cookies": {
     "quota": 2691.15,
     "used": 33.85,
-    "timestamp": 1779202848.4449596
+    "timestamp": 1779220345.5264275
   },
   "AnyRouter13_cookies": {
     "quota": 2848.5,
     "used": 51.5,
-    "timestamp": 1779202856.411867
+    "timestamp": 1779220354.2496822
   },
   "AnyRouter14_cookies": {
     "quota": 4074.43,
     "used": 525.57,
-    "timestamp": 1779202865.68786
+    "timestamp": 1779220362.9616761
   }
 }
