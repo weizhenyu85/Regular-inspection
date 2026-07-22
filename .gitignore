@@ -33,6 +33,8 @@ ENV/
 # 数据文件
 # balance_hash.txt  # 由 GitHub Actions 自动提交，用于余额变更追踪
 # balance_data.json # 由 GitHub Actions 自动提交，用于余额变更追踪
+# 分组签到的临时结果文件（仅用于汇总通知，通过 artifact 传递，无需入库）
+checkin_result_g*.json
 *.log
 logs/
 
@@ -60,3 +62,6 @@ htmlcov/
 *.bak
 *.tmp
 *.old
+
+# 快速登录工具 - 敏感配置文件
+login_config.json

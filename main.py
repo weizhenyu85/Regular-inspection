@@ -20,11 +20,13 @@ from dotenv import load_dotenv
 
 from checkin import CheckIn
 from utils.config import AppConfig, load_accounts, validate_account
+from utils.constants import get_account_group_suffix
+from utils.report import render_notification
 from utils.notify import notify
 
 load_dotenv(override=True)
 
-BALANCE_HASH_FILE = "balance_hash.txt"
+BALANCE_HASH_FILE = f"balance_hash{get_account_group_suffix()}.txt"
 
 
 def check_dependencies():
@@ -225,6 +227,41 @@ def save_balance_hash(balance_hash: str) -> None:
         logger.error(error_msg, exc_info=True)
 
 
+def filter_account_group(accounts: List, logger) -> List:
+    """按分组筛选账号（用于多 IP 分批签到，规避同 IP 风控）
+
+    通过环境变量控制：
+        ACCOUNT_GROUP: 当前任务负责的分组序号（从 0 开始）
+        ACCOUNT_GROUP_COUNT: 总分组数
+
+    采用取模轮转分配（i % count == group），把账号均匀分散到各分组。
+    未设置或分组数 <= 1 时返回全部账号，保持原行为不变。
+    """
+    group = os.getenv("ACCOUNT_GROUP")
+    count = os.getenv("ACCOUNT_GROUP_COUNT")
+
+    if group is None or not count:
+        return accounts
+
+    try:
+        g = int(group)
+        n = int(count)
+    except (ValueError, TypeError):
+        logger.warning(f"⚠️ 账号分组配置无效 (ACCOUNT_GROUP={group}, ACCOUNT_GROUP_COUNT={count})，忽略分组")
+        return accounts
+
+    if n <= 1:
+        return accounts
+
+    if not (0 <= g < n):
+        logger.warning(f"⚠️ ACCOUNT_GROUP={g} 超出范围 [0, {n})，忽略分组")
+        return accounts
+
+    selected = [a for i, a in enumerate(accounts) if i % n == g]
+    logger.info(f"🧩 账号分组已启用: 第 {g + 1}/{n} 组，本组处理 {len(selected)}/{len(accounts)} 个账号")
+    return selected
+
+
 def generate_balance_hash(balances: dict) -> str:
     """生成余额数据的hash"""
     simple_balances = {}
@@ -270,6 +307,12 @@ async def main():
         return 1
 
     logger.info(f"\n⚙️ 找到 {len(accounts)} 个账号配置")
+
+    # 按分组筛选账号（多 IP 分批签到，规避同 IP 风控）
+    accounts = filter_account_group(accounts, logger)
+    if not accounts:
+        logger.error("\n❌ 当前分组没有分配到任何账号，程序退出")
+        return 1
 
     # 验证账号配置
     valid_accounts = []
@@ -529,116 +572,24 @@ async def main():
         save_balance_hash(current_balance_hash)
 
     # 发送通知
-    if need_notify and platform_stats:
-        # 构建融合后的通知内容
-        notification_lines = []
-
-        # 标题和执行时间
-        notification_lines.append(f"🕓 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (北京时间)")
-        notification_lines.append("")
-
-        # 统计结果
-        total_success = sum(p['success'] for p in platform_stats.values())
-        total_failed = sum(p['failed'] for p in platform_stats.values())
-        total_accounts = total_success + total_failed
-
-        notification_lines.append("📊 统计结果:")
-        notification_lines.append(f"✓ 成功: {total_success} 个")
-        notification_lines.append(f"✗ 失败: {total_failed} 个")
-        notification_lines.append("")
-
-        # 详细结果 - 按平台分组展示
-        notification_lines.append("📝 详细结果:")
-        notification_lines.append("")
-
-        for platform, stats in sorted(platform_stats.items()):
-            for i, account_info in enumerate(stats['accounts']):
-                status = account_info['status']
-                name = account_info['name']
-
-                if status == '✅':
-                    # 成功的账号
-                    quota = account_info.get('quota', 0)
-                    used = account_info.get('used', 0)
-                    balance_str = f"💰 余额: ${quota:.2f}, 已用: ${used:.2f}"
-
-                    # 检查是否有变化
-                    recharge = account_info.get('recharge')
-                    quota_change = account_info.get('quota_change')
-
-                    if recharge or quota_change:
-                        change_parts = []
-                        if recharge:
-                            change_parts.append(f"增加+${abs(recharge):.2f}" if recharge > 0 else f"减少-${abs(recharge):.2f}")
-                        if quota_change:
-                            change_parts.append(f"可用+${abs(quota_change):.2f}" if quota_change > 0 else f"可用-${abs(quota_change):.2f}")
-                        notification_lines.append(f"{status} {platform} {name}")
-                        notification_lines.append(f"   签到成功 {balance_str}")
-                        notification_lines.append(f"   📈 变动: {', '.join(change_parts)}")
-                    else:
-                        notification_lines.append(f"{status} {platform} {name}")
-                        notification_lines.append(f"   签到成功 {balance_str}")
-                else:
-                    # 失败的账号
-                    error = account_info.get('error', 'Unknown error')
-                    # 获取上次余额（如果有）
-                    quota = account_info.get('quota')
-                    used = account_info.get('used')
-                    notification_lines.append(f"{status} {platform} {name}")
-                    notification_lines.append(f"   签到失败: {error}")
-                    if quota is not None and used is not None:
-                        notification_lines.append(f"   💰 余额: ${quota:.2f}, 已用: ${used:.2f} (未更新)")
-
-                # 每个账号后添加空行分隔
-                notification_lines.append("")
-
-        # 移除最后一个多余的空行（因为后面紧跟着平台汇总）
-        if notification_lines and notification_lines[-1] == "":
-            notification_lines.pop()
-
-        # 各平台汇总
-        for platform, stats in sorted(platform_stats.items()):
-            if stats['success'] + stats['failed'] == 0:
-                continue
-
-            notification_lines.append(f"─── {platform} 平台汇总 ───")
-            notification_lines.append(f"✓ 成功: {stats['success']} 个 | ✗ 失败: {stats['failed']} 个")
-
-            if stats['total_quota'] > 0 or stats['total_used'] > 0:
-                notification_lines.append(f"💰 总余额: ${stats['total_quota']:.2f}, 总已用: ${stats['total_used']:.2f}")
-
-            if stats['total_recharge'] != 0 or stats['total_quota_change'] != 0:
-                change_parts = []
-                if stats['total_recharge'] != 0:
-                    change_parts.append(f"增加+${abs(stats['total_recharge']):.2f}" if stats['total_recharge'] > 0 else f"减少-${abs(stats['total_recharge']):.2f}")
-                if stats['total_quota_change'] != 0:
-                    change_parts.append(f"可用+${abs(stats['total_quota_change']):.2f}" if stats['total_quota_change'] > 0 else f"可用-${abs(stats['total_quota_change']):.2f}")
-                notification_lines.append(f"📈 本期变动: {', '.join(change_parts)}")
-
-            notification_lines.append("")
-
-        # 全平台总汇总
-        total_quota = sum(p['total_quota'] for p in platform_stats.values())
-        total_used = sum(p['total_used'] for p in platform_stats.values())
-        total_recharge = sum(p['total_recharge'] for p in platform_stats.values())
-        total_used_change = sum(p['total_used_change'] for p in platform_stats.values())
-        total_quota_change = sum(p['total_quota_change'] for p in platform_stats.values())
-
-        notification_lines.append("━━━ 全平台汇总 ━━━")
-        if total_quota > 0 or total_used > 0:
-            notification_lines.append(f"💰 总余额: ${total_quota:.2f}")
-            notification_lines.append(f"📊 总已用: ${total_used:.2f}")
-
-        if total_recharge != 0 or total_quota_change != 0:
-            change_parts = []
-            if total_recharge != 0:
-                change_parts.append(f"增加+${abs(total_recharge):.2f}" if total_recharge > 0 else f"减少-${abs(total_recharge):.2f}")
-            if total_quota_change != 0:
-                change_parts.append(f"可用+${abs(total_quota_change):.2f}" if total_quota_change > 0 else f"可用-${abs(total_quota_change):.2f}")
-            notification_lines.append(f"📈 本期变动: {', '.join(change_parts)}")
-
-        notify_content = "\n".join(notification_lines)
-
+    group_suffix = get_account_group_suffix()
+    if group_suffix:
+        # 分组模式：不单独发通知，把本组结果写入文件，
+        # 由汇总任务（summary_notify.py）下载所有分组结果后合并成单条通知发送。
+        result_file = f"checkin_result{group_suffix}.json"
+        result_payload = {
+            "group": os.getenv("ACCOUNT_GROUP"),
+            "need_notify": need_notify,
+            "platform_stats": platform_stats,
+        }
+        try:
+            with open(result_file, "w", encoding="utf-8") as f:
+                json.dump(result_payload, f, ensure_ascii=False, indent=2)
+            logger.info(f"📝 本组结果已写入 {result_file}（need_notify={need_notify}），通知将由汇总任务统一发送")
+        except (IOError, OSError) as e:
+            logger.error(f"❌ 写入分组结果失败: {e}")
+    elif need_notify and platform_stats:
+        notify_content = render_notification(platform_stats)
         logger.info("\n" + notify_content)
         notify.push_message("Router签到提醒", notify_content, msg_type="text")
         logger.info("\n🔔 通知已发送")

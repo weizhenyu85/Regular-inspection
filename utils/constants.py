@@ -2,6 +2,29 @@
 全局常量定义
 """
 
+import os
+
+
+def get_account_group_suffix() -> str:
+    """获取账号分组的文件后缀
+
+    当通过 ACCOUNT_GROUP / ACCOUNT_GROUP_COUNT 把账号拆分到多个并行任务
+    （不同出口 IP）时，每个分组使用独立的余额状态文件，避免并行任务
+    互相覆盖 / git 提交冲突。未分组时返回空字符串，保持原有文件名不变。
+
+    Returns:
+        str: 例如 "_g0"；未启用分组时为 ""
+    """
+    group = os.getenv("ACCOUNT_GROUP")
+    count = os.getenv("ACCOUNT_GROUP_COUNT")
+    try:
+        if group is not None and count and int(count) > 1:
+            return f"_g{int(group)}"
+    except (ValueError, TypeError):
+        pass
+    return ""
+
+
 # ==================== User-Agent ====================
 # 使用最新真实的Chrome稳定版本号（2024年12月最新版）
 # 注意：定期更新以避免被识别为过时浏览器

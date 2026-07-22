@@ -38,6 +38,7 @@ from utils.constants import (
     WAF_COOKIE_NAMES,
     RATE_LIMIT_DELAY_MIN,
     RATE_LIMIT_DELAY_MAX,
+    get_account_group_suffix,
 )
 from utils.enhanced_stealth import EnhancedStealth, ProxyManager, StealthConfig
 
@@ -89,7 +90,7 @@ class CheckIn:
     def __init__(self, account: AccountConfig, provider: ProviderConfig):
         self.account = account
         self.provider = provider
-        self.balance_data_file = "balance_data.json"
+        self.balance_data_file = f"balance_data{get_account_group_suffix()}.json"
         self.logger = setup_logger(__name__)
         self._playwright = None
         self.session_cache = SessionCache()  # 添加会话缓存实例
