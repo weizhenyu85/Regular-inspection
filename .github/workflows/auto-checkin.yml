@@ -68,9 +68,10 @@ jobs:
 
       - name: 设置 Clash 代理（可选）
         env:
-          # agentrouter 组使用专用订阅（出口需为住宅/机场 IP，以绕过 CDN 对数据中心 IP 的滑块验证）；
-          # 其它组沿用全局订阅 PROXY_SUBSCRIPTION_URL（未配置则该组跳过代理）
-          SUBSCRIPTION_URL: ${{ matrix.group == 'agentrouter' && secrets.AGENTROUTER_PROXY_SUBSCRIPTION_URL || secrets.PROXY_SUBSCRIPTION_URL }}
+          # agentrouter 组只认专用订阅 AGENTROUTER_PROXY_SUBSCRIPTION_URL（不回退全局，
+          # 与下方签到步骤 USE_PROXY/PROXY_SERVER 的判定条件保持一致）；
+          # 其它组用全局订阅 PROXY_SUBSCRIPTION_URL（未配置则该组跳过代理）
+          SUBSCRIPTION_URL: ${{ matrix.group == 'agentrouter' && secrets.AGENTROUTER_PROXY_SUBSCRIPTION_URL || (matrix.group != 'agentrouter' && secrets.PROXY_SUBSCRIPTION_URL) || '' }}
           # agentrouter 组只选匹配的节点（默认新加坡，可用 secret 覆盖）：
           # 部分节点连不上 AgentRouter，固定用与本地一致的新加坡节点更稳
           NODE_FILTER: ${{ matrix.group == 'agentrouter' && (secrets.AGENTROUTER_PROXY_NODE_FILTER || '(?i)(新加坡|singapore|sg|狮城)') || '' }}
