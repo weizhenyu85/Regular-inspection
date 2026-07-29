@@ -137,8 +137,10 @@ jobs:
           echo "========================="
 
           # 启动 Clash（后台运行）
+          # 用 setsid + </dev/null 让 Clash 脱离当前 step 的 shell 与控制终端，
+          # 避免 step 结束 shell 退出时 Clash 收到 SIGHUP 被杀（导致下个 step 7890 失联）
           echo "🚀 启动 Clash..."
-          ./clash -f config.yaml > clash.log 2>&1 &
+          setsid ./clash -f config.yaml > clash.log 2>&1 < /dev/null &
           CLASH_PID=$!
           echo "Clash PID: $CLASH_PID"
 
@@ -203,6 +205,31 @@ jobs:
           ACCOUNT_GROUP: ${{ matrix.group }}
           ACCOUNT_GROUP_COUNT: '3'
         run: |
+          # 确保代理在线：GitHub Actions 后台进程可能在上个 step 结束时被回收，
+          # 若本组启用了 Clash 代理（config.yaml 存在）而 7890 已失联，就地重启
+          if [ -f config.yaml ] && [ -x ./clash ]; then
+            CODE=$(curl -x http://127.0.0.1:7890 -s -m 8 -o /dev/null -w "%{http_code}" http://www.gstatic.com/generate_204 || echo 000)
+            if [ "$CODE" = "204" ] || [ "$CODE" = "200" ]; then
+              echo "✅ 代理仍在线（HTTP $CODE）"
+            else
+              echo "⚠️ 代理已失联（HTTP $CODE），重启 Clash..."
+              setsid ./clash -f config.yaml > clash.log 2>&1 < /dev/null &
+              echo "⏳ 等待代理就绪（最多 90 秒）..."
+              for i in $(seq 1 18); do
+                sleep 5
+                CODE=$(curl -x http://127.0.0.1:7890 -s -m 8 -o /dev/null -w "%{http_code}" http://www.gstatic.com/generate_204 || echo 000)
+                echo "  第 ${i} 次探测（$((i*5))s）: HTTP ${CODE}"
+                if [ "$CODE" = "204" ] || [ "$CODE" = "200" ]; then
+                  echo "✅ 代理已就绪（约 $((i*5)) 秒）"
+                  break
+                fi
+              done
+              if [ "$CODE" != "204" ] && [ "$CODE" != "200" ]; then
+                echo "⚠️ 代理重启后仍未就绪，打印 Clash 日志尾部："
+                tail -n 40 clash.log || true
+              fi
+            fi
+          fi
           python main.py
 
       - name: 提交余额数据
