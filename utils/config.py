@@ -104,9 +104,10 @@ class AppConfig:
     @classmethod
     def load_from_env(cls) -> "AppConfig":
         """从环境变量加载配置"""
-        # AgentRouter 备用域名 ps.air-outer.com 大陆可直连，与原域名 agentrouter.org 功能一致；
-        # 原域名可能下线，默认使用备用域名，可通过 AGENTROUTER_BASE_URL 覆盖
-        agentrouter_base = os.getenv("AGENTROUTER_BASE_URL", "https://ps.air-outer.com").rstrip("/")
+        # AgentRouter 域名：默认备用域名 ps.air-outer.com（大陆可直连）；
+        # 走海外节点（如新加坡）时应设为原域名 agentrouter.org。
+        # 用 `or` 兜底，兼容 CI 里传入空字符串的情况。
+        agentrouter_base = (os.getenv("AGENTROUTER_BASE_URL") or "https://ps.air-outer.com").rstrip("/")
 
         # 内置 Provider 配置
         default_providers = {
