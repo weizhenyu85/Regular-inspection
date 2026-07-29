@@ -40,20 +40,14 @@ def _fmt_change(value: float, label: str = "") -> str:
     return f"{label}{sign}${abs(value):.2f}"
 
 
-def _change_summary(quota_change: float, used_change: float) -> str:
-    """组合可用/消耗变动为短字符串；无变动返回空串
-
-    纯消耗（可用减少额 == 消耗增加额）时只显示 "消耗+$X"，避免同一信息
-    重复两遍；有额外进账（签到奖励/充值）导致两者对不上时才都展示。
-    """
-    if used_change and abs(quota_change + used_change) < 0.005:
-        return _fmt_change(used_change, "消耗")
+def _change_line(recharge: float, quota_change: float) -> str:
+    """组合变动为短字符串，如 "增加+$350.00, 可用+$342.00"；无变动返回空串"""
     parts = []
+    if recharge:
+        parts.append(_fmt_change(recharge, "增加"))
     if quota_change:
         parts.append(_fmt_change(quota_change, "可用"))
-    if used_change:
-        parts.append(_fmt_change(used_change, "消耗"))
-    return " ".join(parts)
+    return ", ".join(parts)
 
 
 def render_notification(platform_stats: Dict[str, Any]) -> str:
@@ -92,20 +86,20 @@ def render_notification(platform_stats: Dict[str, Any]) -> str:
                 quota = acc.get("quota", 0) or 0
                 used = acc.get("used", 0) or 0
                 line = f"✅ {name}  余额${quota:.2f}（已用${used:.2f}）"
-                # 余额变化：展示可用/消耗变动
-                changes = _change_summary(acc.get("quota_change") or 0, acc.get("used_change") or 0)
-                if changes:
-                    line += f" 📈{changes}"
+                # 余额变化：只展示可用额度变化
+                quota_change = acc.get("quota_change") or 0
+                if quota_change:
+                    line += f" 📈{_fmt_change(quota_change, '可用')}"
                 lines.append(line)
             else:
                 error = acc.get("error", "Unknown error")
                 lines.append(f"❌ {name}  失败: {error}")
 
-        # 平台汇总（各平台分别计算，含可用/消耗变动合计）
+        # 平台汇总（各平台分别计算，含增加/可用变动合计）
         summary = f"─ {platform} 汇总: 成功{stats['success']} | 失败{stats['failed']}"
         if stats["total_quota"] > 0 or stats["total_used"] > 0:
             summary += f" · 余额${stats['total_quota']:.2f} · 已用${stats['total_used']:.2f}"
-        changes = _change_summary(stats["total_quota_change"], stats["total_used_change"])
+        changes = _change_line(stats["total_recharge"], stats["total_quota_change"])
         if changes:
             summary += f" 📈{changes}"
         lines.append(summary)
@@ -114,12 +108,12 @@ def render_notification(platform_stats: Dict[str, Any]) -> str:
     if active_platforms > 1:
         total_quota = sum(p["total_quota"] for p in platform_stats.values())
         total_used = sum(p["total_used"] for p in platform_stats.values())
+        total_recharge = sum(p["total_recharge"] for p in platform_stats.values())
         total_quota_change = sum(p["total_quota_change"] for p in platform_stats.values())
-        total_used_change = sum(p["total_used_change"] for p in platform_stats.values())
         lines.append("")
         lines.append("━━━ 全平台合计 ━━━")
         tail = f"余额${total_quota:.2f} · 已用${total_used:.2f}"
-        changes = _change_summary(total_quota_change, total_used_change)
+        changes = _change_line(total_recharge, total_quota_change)
         if changes:
             tail += f" 📈{changes}"
         lines.append(tail)
