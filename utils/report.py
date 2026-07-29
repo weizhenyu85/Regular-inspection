@@ -34,100 +34,78 @@ def merge_platform_stats(all_stats: List[Dict[str, Any]]) -> Dict[str, Any]:
     return merged
 
 
+def _fmt_change(value: float, label: str = "") -> str:
+    """把余额变化格式化为带正负号的短字符串，如 +$5.00 / -$5.00"""
+    sign = "+" if value > 0 else "-"
+    return f"{label}{sign}${abs(value):.2f}"
+
+
 def render_notification(platform_stats: Dict[str, Any]) -> str:
-    """根据 platform_stats 渲染签到通知文本"""
-    notification_lines = []
+    """渲染签到通知文本：按平台分组，每个账号占一行
 
-    # 标题和执行时间
-    notification_lines.append(f"🕓 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (北京时间)")
-    notification_lines.append("")
+    结构：
+        🕓 时间 / 📊 总计
+        ━━━ 平台A ━━━
+        ✅ 账号  余额$x（已用$y） 📈+$z
+        ❌ 账号  失败: 原因
+        小计 ...
+        ━━━ 平台B ━━━ ...
+        ━━━ 全平台合计 ━━━（多平台时）
+    """
+    lines: List[str] = []
 
-    # 统计结果
-    total_success = sum(p['success'] for p in platform_stats.values())
-    total_failed = sum(p['failed'] for p in platform_stats.values())
+    # 标题：时间 + 总体统计
+    lines.append(f"🕓 {datetime.now().strftime('%Y-%m-%d %H:%M')} (北京时间)")
+    total_success = sum(p["success"] for p in platform_stats.values())
+    total_failed = sum(p["failed"] for p in platform_stats.values())
+    lines.append(f"📊 成功 {total_success} | 失败 {total_failed}")
 
-    notification_lines.append("📊 统计结果:")
-    notification_lines.append(f"✓ 成功: {total_success} 个")
-    notification_lines.append(f"✗ 失败: {total_failed} 个")
-    notification_lines.append("")
-
-    # 详细结果 - 每个平台一个独立区块（明细 + 平台汇总），互不混排
-    notification_lines.append("📝 详细结果:")
-    notification_lines.append("")
-
+    # 逐平台分区
+    active_platforms = 0
     for platform, stats in sorted(platform_stats.items()):
-        if stats['success'] + stats['failed'] == 0:
+        if stats["success"] + stats["failed"] == 0:
             continue
+        active_platforms += 1
 
-        notification_lines.append(f"━━━ {platform} ━━━")
+        lines.append("")
+        lines.append(f"━━━ {platform} ━━━")
 
-        for account_info in stats['accounts']:
-            status = account_info['status']
-            name = account_info['name']
-
-            if status == '✅':
-                # 成功的账号
-                quota = account_info.get('quota', 0)
-                used = account_info.get('used', 0)
-                balance_str = f"💰 余额: ${quota:.2f}, 已用: ${used:.2f}"
-
-                # 检查是否有变化
-                recharge = account_info.get('recharge')
-                quota_change = account_info.get('quota_change')
-
-                notification_lines.append(f"{status} {name}")
-                notification_lines.append(f"   签到成功 {balance_str}")
-                if recharge or quota_change:
-                    change_parts = []
-                    if recharge:
-                        change_parts.append(f"增加+${abs(recharge):.2f}" if recharge > 0 else f"减少-${abs(recharge):.2f}")
-                    if quota_change:
-                        change_parts.append(f"可用+${abs(quota_change):.2f}" if quota_change > 0 else f"可用-${abs(quota_change):.2f}")
-                    notification_lines.append(f"   📈 变动: {', '.join(change_parts)}")
+        for acc in stats["accounts"]:
+            name = acc["name"]
+            if acc["status"] == "✅":
+                quota = acc.get("quota", 0) or 0
+                used = acc.get("used", 0) or 0
+                line = f"✅ {name}  余额${quota:.2f}（已用${used:.2f}）"
+                # 余额变化：优先展示充值/总变动，否则展示可用额度变化
+                recharge = acc.get("recharge")
+                quota_change = acc.get("quota_change")
+                if recharge:
+                    line += f" 📈{_fmt_change(recharge)}"
+                elif quota_change:
+                    line += f" 📈{_fmt_change(quota_change, '可用')}"
+                lines.append(line)
             else:
-                # 失败的账号
-                error = account_info.get('error', 'Unknown error')
-                quota = account_info.get('quota')
-                used = account_info.get('used')
-                notification_lines.append(f"{status} {name}")
-                notification_lines.append(f"   签到失败: {error}")
-                if quota is not None and used is not None:
-                    notification_lines.append(f"   💰 余额: ${quota:.2f}, 已用: ${used:.2f} (未更新)")
+                error = acc.get("error", "Unknown error")
+                lines.append(f"❌ {name}  失败: {error}")
 
-        # 平台汇总紧跟在本平台明细后面
-        notification_lines.append(f"─── {platform} 汇总 ───")
-        notification_lines.append(f"✓ 成功: {stats['success']} 个 | ✗ 失败: {stats['failed']} 个")
+        # 平台小计
+        summary = f"小计 成功{stats['success']}/失败{stats['failed']}"
+        if stats["total_quota"] > 0 or stats["total_used"] > 0:
+            summary += f" · 余额${stats['total_quota']:.2f}"
+        if stats["total_recharge"] != 0:
+            summary += f" 📈{_fmt_change(stats['total_recharge'])}"
+        lines.append(summary)
 
-        if stats['total_quota'] > 0 or stats['total_used'] > 0:
-            notification_lines.append(f"💰 总余额: ${stats['total_quota']:.2f}, 总已用: ${stats['total_used']:.2f}")
-
-        if stats['total_recharge'] != 0 or stats['total_quota_change'] != 0:
-            change_parts = []
-            if stats['total_recharge'] != 0:
-                change_parts.append(f"增加+${abs(stats['total_recharge']):.2f}" if stats['total_recharge'] > 0 else f"减少-${abs(stats['total_recharge']):.2f}")
-            if stats['total_quota_change'] != 0:
-                change_parts.append(f"可用+${abs(stats['total_quota_change']):.2f}" if stats['total_quota_change'] > 0 else f"可用-${abs(stats['total_quota_change']):.2f}")
-            notification_lines.append(f"📈 本期变动: {', '.join(change_parts)}")
-
-        notification_lines.append("")
-
-    # 全平台总汇总
-    total_quota = sum(p['total_quota'] for p in platform_stats.values())
-    total_used = sum(p['total_used'] for p in platform_stats.values())
-    total_recharge = sum(p['total_recharge'] for p in platform_stats.values())
-    total_quota_change = sum(p['total_quota_change'] for p in platform_stats.values())
-
-    notification_lines.append("━━━ 全平台汇总 ━━━")
-    if total_quota > 0 or total_used > 0:
-        notification_lines.append(f"💰 总余额: ${total_quota:.2f}")
-        notification_lines.append(f"📊 总已用: ${total_used:.2f}")
-
-    if total_recharge != 0 or total_quota_change != 0:
-        change_parts = []
+    # 全平台合计（仅多平台时展示）
+    if active_platforms > 1:
+        total_quota = sum(p["total_quota"] for p in platform_stats.values())
+        total_used = sum(p["total_used"] for p in platform_stats.values())
+        total_recharge = sum(p["total_recharge"] for p in platform_stats.values())
+        lines.append("")
+        lines.append("━━━ 全平台合计 ━━━")
+        tail = f"余额${total_quota:.2f} · 已用${total_used:.2f}"
         if total_recharge != 0:
-            change_parts.append(f"增加+${abs(total_recharge):.2f}" if total_recharge > 0 else f"减少-${abs(total_recharge):.2f}")
-        if total_quota_change != 0:
-            change_parts.append(f"可用+${abs(total_quota_change):.2f}" if total_quota_change > 0 else f"可用-${abs(total_quota_change):.2f}")
-        notification_lines.append(f"📈 本期变动: {', '.join(change_parts)}")
+            tail += f" 📈{_fmt_change(total_recharge)}"
+        lines.append(tail)
 
-    return "\n".join(notification_lines)
+    return "\n".join(lines)

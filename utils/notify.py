@@ -118,7 +118,10 @@ class NotificationKit:
         if not self.pushplus_token:
             raise ValueError('PushPlus Token not configured')
 
-        data = {'token': self.pushplus_token, 'title': title, 'content': content, 'template': 'html'}
+        # PushPlus 按 html 模板渲染，纯文本的换行/空格会被吞掉导致排版错乱；
+        # 用 <pre> 包裹保留原始换行与对齐
+        html_content = f'<pre>{content}</pre>'
+        data = {'token': self.pushplus_token, 'title': title, 'content': html_content, 'template': 'html'}
         with httpx.Client(timeout=30.0) as client:
             client.post('http://www.pushplus.plus/send', json=data)
 
@@ -128,7 +131,8 @@ class NotificationKit:
             raise ValueError('Server Push key not configured')
 
         url = f'https://sctapi.ftqq.com/{self.server_push_key}.send'
-        data = {'title': title, 'desp': content}
+        # Server酱 desp 按 markdown 渲染，单换行会被合并；用代码块包裹保留换行排版
+        data = {'title': title, 'desp': f'```\n{content}\n```'}
 
         with httpx.Client(timeout=30.0) as client:
             # 尝试 1: JSON 格式（Server酱 Turbo 版）
@@ -162,10 +166,12 @@ class NotificationKit:
         if not self.feishu_webhook:
             raise ValueError('Feishu Webhook not configured')
 
+        # 用 plain_text 而非 markdown：纯文本按原样换行显示，
+        # 避免 markdown 吞掉单换行或把 $、- 等符号当语法
         data = {
             'msg_type': 'interactive',
             'card': {
-                'elements': [{'tag': 'markdown', 'content': content, 'text_align': 'left'}],
+                'elements': [{'tag': 'div', 'text': {'tag': 'plain_text', 'content': content}}],
                 'header': {'template': 'blue', 'title': {'content': title, 'tag': 'plain_text'}},
             },
         }
