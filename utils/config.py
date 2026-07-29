@@ -104,6 +104,10 @@ class AppConfig:
     @classmethod
     def load_from_env(cls) -> "AppConfig":
         """从环境变量加载配置"""
+        # AgentRouter 备用域名 ps.air-outer.com 大陆可直连，与原域名 agentrouter.org 功能一致；
+        # 原域名可能下线，默认使用备用域名，可通过 AGENTROUTER_BASE_URL 覆盖
+        agentrouter_base = os.getenv("AGENTROUTER_BASE_URL", "https://ps.air-outer.com").rstrip("/")
+
         # 内置 Provider 配置
         default_providers = {
             "anyrouter": ProviderConfig(
@@ -117,13 +121,13 @@ class AppConfig:
             ),
             "agentrouter": ProviderConfig(
                 name="AgentRouter",
-                base_url="https://agentrouter.org",
-                login_url="https://agentrouter.org/login",
+                base_url=agentrouter_base,
+                login_url=f"{agentrouter_base}/login",
                 # AgentRouter 使用 sign_in 接口，如果404则自动查询用户信息进行保活
-                checkin_url="https://agentrouter.org/api/user/sign_in",
-                user_info_url="https://agentrouter.org/api/user/self",
-                status_url="https://agentrouter.org/api/status",
-                auth_state_url="https://agentrouter.org/api/oauth/state"
+                checkin_url=f"{agentrouter_base}/api/user/sign_in",
+                user_info_url=f"{agentrouter_base}/api/user/self",
+                status_url=f"{agentrouter_base}/api/status",
+                auth_state_url=f"{agentrouter_base}/api/oauth/state"
             )
         }
 

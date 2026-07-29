@@ -196,6 +196,111 @@ class EmailAuthenticator(Authenticator):
             pass
         return None
 
+    async def _try_api_login(self, page: Page) -> Dict[str, Any]:
+        """尝试直接调用登录 API（new-api 站点未开启验证码时可用，比表单填写更稳定）
+
+        在浏览器上下文中执行 fetch，session cookie 会自动写入浏览器。
+        AgentRouter 等站点登录即完成签到，此路径可完全避开表单选择器失配问题。
+
+        Returns:
+            {"status": "ok", "user_id": ..., "username": ...}  API登录成功
+            {"status": "auth_failed", "message": ...}          凭据错误，表单登录也不会成功
+            {"status": "unavailable"}                          API不可用，回退表单登录
+        """
+        login_api_url = f"{self.provider_config.base_url}/api/user/login"
+        logger.info(f"🚀 [{self.auth_config.username}] 尝试 API 直接登录: {login_api_url}")
+        try:
+            result = await page.evaluate(
+                """
+                async ({url, username, password}) => {
+                    try {
+                        const resp = await fetch(url, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            credentials: 'include',
+                            body: JSON.stringify({username, password})
+                        });
+                        const contentType = resp.headers.get('content-type') || '';
+                        if (!contentType.includes('application/json')) {
+                            return {status: resp.status, nonJson: true};
+                        }
+                        return {status: resp.status, data: await resp.json()};
+                    } catch (e) {
+                        return {status: 0, error: e.message};
+                    }
+                }
+                """,
+                {
+                    "url": login_api_url,
+                    "username": self.auth_config.username,
+                    "password": self.auth_config.password,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"⚠️ [{self.auth_config.username}] API 登录请求异常: {sanitize_exception(e)}")
+            return {"status": "unavailable"}
+
+        if result.get("error") or result.get("nonJson") or result.get("status") != 200:
+            logger.info(f"ℹ️ [{self.auth_config.username}] API 登录不可用 (HTTP {result.get('status')})，回退表单登录")
+            return {"status": "unavailable"}
+
+        data = result.get("data") or {}
+        if data.get("success"):
+            user_data = data.get("data") or {}
+            user_id = user_data.get("id")
+            username = user_data.get("username")
+            logger.info(f"✅ [{self.auth_config.username}] API 登录成功，用户ID: {user_id}")
+            return {
+                "status": "ok",
+                "user_id": str(user_id) if user_id else None,
+                "username": username,
+            }
+
+        message = data.get("message", "Login failed")
+        logger.error(f"❌ [{self.auth_config.username}] API 登录失败: {message}")
+        return {"status": "auth_failed", "message": message}
+
+    async def _finalize_login(
+        self, page: Page, context: BrowserContext,
+        user_id: Optional[str] = None, username: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """登录成功后的收尾：提取cookies、补齐用户标识、缓存会话"""
+        final_cookies = await context.cookies()
+        cookies_dict = {cookie["name"]: cookie["value"] for cookie in final_cookies}
+
+        if "session" not in cookies_dict and "sessionid" not in cookies_dict:
+            logger.warning(f"⚠️ [{self.auth_config.username}] 未找到session cookie")
+
+        logger.info(f"✅ [{self.auth_config.username}] 邮箱认证完成，获取到 {len(cookies_dict)} 个cookies")
+
+        # 优先使用登录响应中的用户ID，其次从localStorage提取，失败则尝试API
+        if not user_id:
+            user_id, username = await self._extract_user_from_localstorage(page)
+            if not user_id:
+                logger.info(f"ℹ️ [{self.auth_config.username}] localStorage未获取到用户ID，尝试API")
+                user_id, username = await self._extract_user_info(page, cookies_dict)
+
+        # AgentRouter 登录即签到，每次直接账号密码登录，无需缓存会话
+        if self.provider_config.name.lower() == "agentrouter":
+            logger.info(f"ℹ️ [{self.auth_config.username}] AgentRouter 不缓存会话，下次直接重新登录")
+            return {"success": True, "cookies": cookies_dict, "user_id": user_id, "username": username}
+
+        # 保存会话缓存
+        try:
+            session_cache.save(
+                account_name=self.account_name,
+                provider=self.provider_config.name,
+                cookies=final_cookies,
+                user_id=user_id,
+                username=username,
+                expiry_hours=24
+            )
+            logger.info(f"✅ [{self.auth_config.username}] 会话已缓存（24小时有效）")
+        except Exception as cache_error:
+            logger.warning(f"⚠️ [{self.auth_config.username}] 缓存保存失败: {cache_error}")
+
+        return {"success": True, "cookies": cookies_dict, "user_id": user_id, "username": username}
+
     async def authenticate(self, page: Page, context: BrowserContext) -> Dict[str, Any]:
         """使用邮箱密码登录"""
         try:
@@ -205,6 +310,17 @@ class EmailAuthenticator(Authenticator):
                 return {"success": False, "error": "Cloudflare verification timeout"}
 
             await self._close_popups(page)
+
+            # 快速路径：直接调用登录API（AgentRouter等未开验证码的new-api站点）
+            api_result = await self._try_api_login(page)
+            if api_result["status"] == "ok":
+                return await self._finalize_login(
+                    page, context, api_result.get("user_id"), api_result.get("username")
+                )
+            if api_result["status"] == "auth_failed":
+                return {"success": False, "error": f"Login failed: {api_result['message']}"}
+
+            # 回退路径：浏览器表单登录
             await self._find_and_click_email_tab(page)
             await page.wait_for_timeout(TimeoutConfig.SHORT_WAIT_2)
 
@@ -239,35 +355,7 @@ class EmailAuthenticator(Authenticator):
             if not success:
                 return {"success": False, "error": error_msg}
 
-            final_cookies = await context.cookies()
-            cookies_dict = {cookie["name"]: cookie["value"] for cookie in final_cookies}
-
-            if "session" not in cookies_dict and "sessionid" not in cookies_dict:
-                logger.warning(f"⚠️ [{self.auth_config.username}] 未找到session cookie")
-
-            logger.info(f"✅ [{self.auth_config.username}] 邮箱认证完成，获取到 {len(cookies_dict)} 个cookies")
-
-            # 优先从localStorage提取用户ID，失败则尝试API
-            user_id, username = await self._extract_user_from_localstorage(page)
-            if not user_id:
-                logger.info(f"ℹ️ [{self.auth_config.username}] localStorage未获取到用户ID，尝试API")
-                user_id, username = await self._extract_user_info(page, cookies_dict)
-
-            # 保存会话缓存
-            try:
-                session_cache.save(
-                    account_name=self.account_name,
-                    provider=self.provider_config.name,
-                    cookies=final_cookies,
-                    user_id=user_id,
-                    username=username,
-                    expiry_hours=24
-                )
-                logger.info(f"✅ [{self.auth_config.username}] 会话已缓存（24小时有效）")
-            except Exception as cache_error:
-                logger.warning(f"⚠️ [{self.auth_config.username}] 缓存保存失败: {cache_error}")
-
-            return {"success": True, "cookies": cookies_dict, "user_id": user_id, "username": username}
+            return await self._finalize_login(page, context)
 
         except Exception as e:
             return {"success": False, "error": f"Email auth failed: {sanitize_exception(e)}"}
