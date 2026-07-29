@@ -1130,6 +1130,8 @@ class ProxyManager:
             "http://www.gstatic.com/generate_204",  # Google 连接测试
             "http://cp.cloudflare.com",             # Cloudflare 连接测试
             "http://www.msftconnecttest.com/connecttest.txt",  # Microsoft 连接测试
+            "https://ps.air-outer.com/api/status",  # AgentRouter 备用域名（真正的目的地）
+            "https://agentrouter.org/api/status",   # AgentRouter 主域名
         ]
 
         for test_url in test_urls:

@@ -122,20 +122,28 @@ jobs:
 
           # 启动 Clash（后台运行）
           echo "🚀 启动 Clash..."
-          ./clash -f config.yaml &
+          ./clash -f config.yaml > clash.log 2>&1 &
           CLASH_PID=$!
           echo "Clash PID: $CLASH_PID"
 
-          # 等待 Clash 启动并下载订阅
-          echo "⏳ 等待 Clash 启动和订阅下载（15秒）..."
-          sleep 15
-
-          # 测试代理是否可用
-          echo "🔍 测试代理连接..."
-          if curl -x http://127.0.0.1:7890 -s -m 10 -o /dev/null -w "%{http_code}" https://www.google.com | grep -q "200"; then
-            echo "✅ Clash 代理启动成功"
-          else
-            echo "⚠️ 代理测试失败，但继续执行"
+          # 轮询等待代理就绪（CI 现装 mihomo + 拉订阅 + 节点健康检查需要时间，
+          # 固定 sleep 往往不够；这里最多等 90 秒直到 7890 能真正出网）
+          echo "⏳ 等待代理就绪（最多 90 秒）..."
+          READY=0
+          for i in $(seq 1 18); do
+            sleep 5
+            CODE=$(curl -x http://127.0.0.1:7890 -s -m 8 -o /dev/null -w "%{http_code}" http://www.gstatic.com/generate_204 || echo 000)
+            echo "  第 ${i} 次探测（$((i*5))s）: HTTP ${CODE}"
+            if [ "$CODE" = "204" ] || [ "$CODE" = "200" ]; then
+              READY=1
+              echo "✅ Clash 代理已就绪（约 $((i*5)) 秒）"
+              break
+            fi
+          done
+          if [ "$READY" != "1" ]; then
+            echo "⚠️ 代理在 90 秒内仍未就绪，打印 Clash 日志尾部用于诊断："
+            tail -n 40 clash.log || true
+            echo "（继续执行，签到会回退直连）"
           fi
 
       - name: 执行签到
