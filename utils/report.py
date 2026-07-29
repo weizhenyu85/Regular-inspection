@@ -41,7 +41,13 @@ def _fmt_change(value: float, label: str = "") -> str:
 
 
 def _change_summary(quota_change: float, used_change: float) -> str:
-    """组合可用/消耗变动为短字符串，如 "可用-$13.75 消耗+$5.00"；无变动返回空串"""
+    """组合可用/消耗变动为短字符串；无变动返回空串
+
+    纯消耗（可用减少额 == 消耗增加额）时只显示 "消耗+$X"，避免同一信息
+    重复两遍；有额外进账（签到奖励/充值）导致两者对不上时才都展示。
+    """
+    if used_change and abs(quota_change + used_change) < 0.005:
+        return _fmt_change(used_change, "消耗")
     parts = []
     if quota_change:
         parts.append(_fmt_change(quota_change, "可用"))
