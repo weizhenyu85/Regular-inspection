@@ -68,7 +68,9 @@ jobs:
 
       - name: 设置 Clash 代理（可选）
         env:
-          SUBSCRIPTION_URL: ${{ secrets.PROXY_SUBSCRIPTION_URL }}
+          # agentrouter 组使用专用订阅（出口需为住宅/机场 IP，以绕过 CDN 对数据中心 IP 的滑块验证）；
+          # 其它组沿用全局订阅 PROXY_SUBSCRIPTION_URL（未配置则该组跳过代理）
+          SUBSCRIPTION_URL: ${{ matrix.group == 'agentrouter' && secrets.AGENTROUTER_PROXY_SUBSCRIPTION_URL || secrets.PROXY_SUBSCRIPTION_URL }}
         run: |
           # 检查是否配置了代理订阅
           if [ -z "$SUBSCRIPTION_URL" ]; then
@@ -156,9 +158,9 @@ jobs:
           SERVERPUSHKEY: ${{ secrets.SERVERPUSHKEY }}
 
           # 代理配置（使用本地 Clash 提供的 HTTP 代理）
-          # 仅当配置了代理订阅时才启用代理
-          USE_PROXY: ${{ secrets.PROXY_SUBSCRIPTION_URL != '' }}
-          PROXY_SERVER: ${{ secrets.PROXY_SUBSCRIPTION_URL != '' && 'http://127.0.0.1:7890' || '' }}
+          # agentrouter 组用专用订阅、其它组用全局订阅；仅当对应订阅已配置时才启用
+          USE_PROXY: ${{ (matrix.group == 'agentrouter' && secrets.AGENTROUTER_PROXY_SUBSCRIPTION_URL != '') || (matrix.group != 'agentrouter' && secrets.PROXY_SUBSCRIPTION_URL != '') }}
+          PROXY_SERVER: ${{ ((matrix.group == 'agentrouter' && secrets.AGENTROUTER_PROXY_SUBSCRIPTION_URL != '') || (matrix.group != 'agentrouter' && secrets.PROXY_SUBSCRIPTION_URL != '')) && 'http://127.0.0.1:7890' || '' }}
 
           # 代理细粒度控制（可选）
           PROXY_METHODS: ${{ secrets.PROXY_METHODS }}
