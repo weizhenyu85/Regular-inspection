@@ -13,6 +13,7 @@ from utils.constants import (
     PASSWORD_INPUT_SELECTORS,
     LOGIN_BUTTON_SELECTORS,
     POPUP_CLOSE_SELECTORS,
+    AGENTROUTER_DOMAINS,
     TimeoutConfig,
 )
 
@@ -301,26 +302,58 @@ class EmailAuthenticator(Authenticator):
 
         return {"success": True, "cookies": cookies_dict, "user_id": user_id, "username": username}
 
+    def _get_candidate_domains(self) -> list:
+        """获取登录候选域名列表（AgentRouter 支持多域名自动切换）"""
+        primary = self.provider_config.base_url.rstrip("/")
+        if self.provider_config.name.lower() == "agentrouter":
+            return [primary] + [d.rstrip("/") for d in AGENTROUTER_DOMAINS if d.rstrip("/") != primary]
+        return [primary]
+
+    def _rebase_provider(self, new_base: str) -> None:
+        """把 provider 的所有 URL 切换到新域名（登录成功的域名，后续签到/查余额沿用）"""
+        old = self.provider_config.base_url.rstrip("/")
+        new_base = new_base.rstrip("/")
+        if old == new_base:
+            return
+        logger.info(f"🔀 [{self.auth_config.username}] Provider 域名切换: {old} -> {new_base}")
+        for field in ("base_url", "login_url", "checkin_url", "user_info_url", "status_url", "auth_state_url"):
+            val = getattr(self.provider_config, field, None)
+            if val:
+                setattr(self.provider_config, field, val.replace(old, new_base))
+
     async def authenticate(self, page: Page, context: BrowserContext) -> Dict[str, Any]:
         """使用邮箱密码登录"""
         try:
             logger.info(f"ℹ️ Starting Email authentication")
 
-            if not await self._init_page_and_check_cloudflare(page):
+            # 快速路径：直接调用登录API（AgentRouter等未开验证码的new-api站点）。
+            # 依次尝试候选域名：某个域名被 CDN 拦截（滑动验证/非JSON响应）时自动切换下一个。
+            candidates = self._get_candidate_domains()
+            page_ready = False
+            for i, base in enumerate(candidates):
+                if i > 0:
+                    logger.info(f"🔁 [{self.auth_config.username}] 当前域名不可用，切换到: {base}")
+                self._rebase_provider(base)
+
+                if not await self._init_page_and_check_cloudflare(page):
+                    continue
+                page_ready = True
+
+                await self._close_popups(page)
+
+                api_result = await self._try_api_login(page)
+                if api_result["status"] == "ok":
+                    return await self._finalize_login(
+                        page, context, api_result.get("user_id"), api_result.get("username")
+                    )
+                if api_result["status"] == "auth_failed":
+                    return {"success": False, "error": f"Login failed: {api_result['message']}"}
+                # unavailable -> 尝试下一个域名
+
+            if not page_ready:
                 return {"success": False, "error": "Cloudflare verification timeout"}
 
-            await self._close_popups(page)
-
-            # 快速路径：直接调用登录API（AgentRouter等未开验证码的new-api站点）
-            api_result = await self._try_api_login(page)
-            if api_result["status"] == "ok":
-                return await self._finalize_login(
-                    page, context, api_result.get("user_id"), api_result.get("username")
-                )
-            if api_result["status"] == "auth_failed":
-                return {"success": False, "error": f"Login failed: {api_result['message']}"}
-
-            # 回退路径：浏览器表单登录
+            # 回退路径：浏览器表单登录（页面停留在最后尝试的域名）
             await self._find_and_click_email_tab(page)
             await page.wait_for_timeout(TimeoutConfig.SHORT_WAIT_2)
 

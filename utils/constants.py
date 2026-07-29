@@ -12,17 +12,37 @@ def get_account_group_suffix() -> str:
     （不同出口 IP）时，每个分组使用独立的余额状态文件，避免并行任务
     互相覆盖 / git 提交冲突。未分组时返回空字符串，保持原有文件名不变。
 
+    ACCOUNT_GROUP 支持数字分组（如 "0"）和命名分组（如 "agentrouter"）。
+
     Returns:
-        str: 例如 "_g0"；未启用分组时为 ""
+        str: 例如 "_g0"、"_gagentrouter"；未启用分组时为 ""
     """
-    group = os.getenv("ACCOUNT_GROUP")
-    count = os.getenv("ACCOUNT_GROUP_COUNT")
-    try:
-        if group is not None and count and int(count) > 1:
-            return f"_g{int(group)}"
-    except (ValueError, TypeError):
-        pass
-    return ""
+    group = (os.getenv("ACCOUNT_GROUP") or "").strip()
+    if not group:
+        return ""
+
+    if group.isdigit():
+        count = os.getenv("ACCOUNT_GROUP_COUNT")
+        try:
+            if count and int(count) > 1:
+                return f"_g{int(group)}"
+        except (ValueError, TypeError):
+            pass
+        return ""
+
+    # 命名分组（如 agentrouter 独立分组），不依赖 ACCOUNT_GROUP_COUNT
+    safe = "".join(c for c in group.lower() if c.isalnum() or c in "-_")
+    return f"_g{safe}" if safe else ""
+
+
+# ==================== AgentRouter 域名 ====================
+# 登录时依次尝试：备用域名 ps.air-outer.com 大陆可直连，但海外 IP（如 GitHub
+# Actions runner）访问会被 CDN 弹滑动验证；原域名 agentrouter.org 海外可达。
+# API 登录被拦截（返回非 JSON）时自动切换到下一个域名。
+AGENTROUTER_DOMAINS = [
+    "https://ps.air-outer.com",
+    "https://agentrouter.org",
+]
 
 
 # ==================== User-Agent ====================

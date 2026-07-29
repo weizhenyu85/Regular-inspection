@@ -22,11 +22,13 @@ jobs:
 
     # 将账号拆分到多个并行任务，每个任务运行在独立的 runner（不同出口 IP），
     # 规避目标平台按 IP 的签到数量限制（同一 IP 超过阈值后返回 403）。
-    # 分组数需与下方 ACCOUNT_GROUP_COUNT 保持一致；14 个账号分 3 组 ≈ 每组 5 个。
+    # - 数字分组（0/1/2）：AnyRouter 账号按顺序连续切块（如 14 个 -> 5/5/4），
+    #   分组数需与下方 ACCOUNT_GROUP_COUNT 保持一致
+    # - agentrouter 分组：AgentRouter 账号独立一组（登录即签到，无同 IP 风控）
     strategy:
       fail-fast: false
       matrix:
-        group: [0, 1, 2]
+        group: [0, 1, 2, agentrouter]
 
     steps:
       - name: 检出代码
@@ -167,7 +169,8 @@ jobs:
           SESSION_CACHE_KEY: ${{ secrets.SESSION_CACHE_KEY }}
 
           # 账号分组（多 IP 分批签到，规避同 IP 风控）
-          # ACCOUNT_GROUP_COUNT 必须与上方 matrix.group 的分组数一致
+          # ACCOUNT_GROUP_COUNT 必须与上方 matrix.group 中数字分组的数量一致
+          # （agentrouter 为命名独立分组，不计入数字分组数）
           ACCOUNT_GROUP: ${{ matrix.group }}
           ACCOUNT_GROUP_COUNT: '3'
         run: |

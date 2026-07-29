@@ -231,16 +231,27 @@ def filter_account_group(accounts: List, logger) -> List:
     """按分组筛选账号（用于多 IP 分批签到，规避同 IP 风控）
 
     通过环境变量控制：
-        ACCOUNT_GROUP: 当前任务负责的分组序号（从 0 开始）
-        ACCOUNT_GROUP_COUNT: 总分组数
+        ACCOUNT_GROUP: 当前任务负责的分组，支持两种取值：
+            - 数字（"0"、"1"...）：处理非 agentrouter 账号，按顺序连续切块分组
+            - "agentrouter"：只处理 agentrouter 账号（独立分组，
+              登录即签到、无同 IP 风控，不参与 AnyRouter 的多 IP 拆分）
+        ACCOUNT_GROUP_COUNT: 数字分组的总分组数
 
-    采用取模轮转分配（i % count == group），把账号均匀分散到各分组。
     未设置或分组数 <= 1 时返回全部账号，保持原行为不变。
     """
-    group = os.getenv("ACCOUNT_GROUP")
+    group = (os.getenv("ACCOUNT_GROUP") or "").strip()
     count = os.getenv("ACCOUNT_GROUP_COUNT")
 
-    if group is None or not count:
+    if not group:
+        return accounts
+
+    # 命名分组：agentrouter 独立一组
+    if group.lower() == "agentrouter":
+        selected = [a for a in accounts if a.provider == "agentrouter"]
+        logger.info(f"🧩 账号分组已启用: agentrouter 独立分组，本组处理 {len(selected)}/{len(accounts)} 个账号")
+        return selected
+
+    if not count:
         return accounts
 
     try:
@@ -257,8 +268,14 @@ def filter_account_group(accounts: List, logger) -> List:
         logger.warning(f"⚠️ ACCOUNT_GROUP={g} 超出范围 [0, {n})，忽略分组")
         return accounts
 
-    selected = [a for i, a in enumerate(accounts) if i % n == g]
-    logger.info(f"🧩 账号分组已启用: 第 {g + 1}/{n} 组，本组处理 {len(selected)}/{len(accounts)} 个账号")
+    # 数字分组只处理非 agentrouter 账号（agentrouter 走独立分组），
+    # 按顺序连续切块（如 14 个分 3 组 -> 1-5 / 6-10 / 11-14），不再轮流间隔分配
+    pool = [a for a in accounts if a.provider != "agentrouter"]
+    base, extra = divmod(len(pool), n)
+    start = g * base + min(g, extra)
+    size = base + (1 if g < extra else 0)
+    selected = pool[start:start + size]
+    logger.info(f"🧩 账号分组已启用: 第 {g + 1}/{n} 组（连续切块），本组处理 {len(selected)}/{len(pool)} 个非 agentrouter 账号")
     return selected
 
 

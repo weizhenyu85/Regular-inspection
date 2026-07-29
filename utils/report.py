@@ -51,11 +51,16 @@ def render_notification(platform_stats: Dict[str, Any]) -> str:
     notification_lines.append(f"✗ 失败: {total_failed} 个")
     notification_lines.append("")
 
-    # 详细结果 - 按平台分组展示
+    # 详细结果 - 每个平台一个独立区块（明细 + 平台汇总），互不混排
     notification_lines.append("📝 详细结果:")
     notification_lines.append("")
 
     for platform, stats in sorted(platform_stats.items()):
+        if stats['success'] + stats['failed'] == 0:
+            continue
+
+        notification_lines.append(f"━━━ {platform} ━━━")
+
         for account_info in stats['accounts']:
             status = account_info['status']
             name = account_info['name']
@@ -70,41 +75,27 @@ def render_notification(platform_stats: Dict[str, Any]) -> str:
                 recharge = account_info.get('recharge')
                 quota_change = account_info.get('quota_change')
 
+                notification_lines.append(f"{status} {name}")
+                notification_lines.append(f"   签到成功 {balance_str}")
                 if recharge or quota_change:
                     change_parts = []
                     if recharge:
                         change_parts.append(f"增加+${abs(recharge):.2f}" if recharge > 0 else f"减少-${abs(recharge):.2f}")
                     if quota_change:
                         change_parts.append(f"可用+${abs(quota_change):.2f}" if quota_change > 0 else f"可用-${abs(quota_change):.2f}")
-                    notification_lines.append(f"{status} {platform} {name}")
-                    notification_lines.append(f"   签到成功 {balance_str}")
                     notification_lines.append(f"   📈 变动: {', '.join(change_parts)}")
-                else:
-                    notification_lines.append(f"{status} {platform} {name}")
-                    notification_lines.append(f"   签到成功 {balance_str}")
             else:
                 # 失败的账号
                 error = account_info.get('error', 'Unknown error')
                 quota = account_info.get('quota')
                 used = account_info.get('used')
-                notification_lines.append(f"{status} {platform} {name}")
+                notification_lines.append(f"{status} {name}")
                 notification_lines.append(f"   签到失败: {error}")
                 if quota is not None and used is not None:
                     notification_lines.append(f"   💰 余额: ${quota:.2f}, 已用: ${used:.2f} (未更新)")
 
-            # 每个账号后添加空行分隔
-            notification_lines.append("")
-
-    # 移除最后一个多余的空行（因为后面紧跟着平台汇总）
-    if notification_lines and notification_lines[-1] == "":
-        notification_lines.pop()
-
-    # 各平台汇总
-    for platform, stats in sorted(platform_stats.items()):
-        if stats['success'] + stats['failed'] == 0:
-            continue
-
-        notification_lines.append(f"─── {platform} 平台汇总 ───")
+        # 平台汇总紧跟在本平台明细后面
+        notification_lines.append(f"─── {platform} 汇总 ───")
         notification_lines.append(f"✓ 成功: {stats['success']} 个 | ✗ 失败: {stats['failed']} 个")
 
         if stats['total_quota'] > 0 or stats['total_used'] > 0:
