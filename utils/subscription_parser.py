@@ -21,6 +21,18 @@ from utils.logger import setup_logger
 logger = setup_logger(__name__)
 
 
+def create_proxy_async_client(proxy_url: str, **kwargs) -> httpx.AsyncClient:
+    """创建带代理的 httpx.AsyncClient，兼容新旧版本代理参数
+
+    httpx >= 0.28 移除了 proxies= 参数（改用 proxy=），0.25 及更早版本没有 proxy=。
+    先尝试新参数，TypeError 时回退旧参数，两头兼容。
+    """
+    try:
+        return httpx.AsyncClient(proxy=proxy_url, **kwargs)
+    except TypeError:
+        return httpx.AsyncClient(proxies={"http://": proxy_url, "https://": proxy_url}, **kwargs)
+
+
 class ProxyNode:
     """代理节点数据类"""
 
@@ -280,8 +292,8 @@ class NodeSpeedTester:
 
             start_time = time.time()
 
-            async with httpx.AsyncClient(
-                proxies={"http://": proxy_url, "https://": proxy_url},
+            async with create_proxy_async_client(
+                proxy_url,
                 timeout=self.timeout,
                 follow_redirects=True
             ) as client:

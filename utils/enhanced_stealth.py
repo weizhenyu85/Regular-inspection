@@ -1136,8 +1136,9 @@ class ProxyManager:
 
         for test_url in test_urls:
             try:
-                async with httpx.AsyncClient(
-                    proxies={"http://": proxy_url, "https://": proxy_url},
+                from utils.subscription_parser import create_proxy_async_client
+                async with create_proxy_async_client(
+                    proxy_url,
                     timeout=timeout,
                     follow_redirects=True
                 ) as client:
@@ -1148,7 +1149,8 @@ class ProxyManager:
             except asyncio.TimeoutError:
                 logger.debug(f"⏱️ 代理测试超时: {test_url}")
             except Exception as e:
-                logger.debug(f"⚠️ 代理测试失败 ({test_url}): {type(e).__name__}")
+                # 用 warning 级别输出具体异常，避免构造错误（如 httpx 版本不兼容）被 debug 日志吞掉
+                logger.warning(f"⚠️ 代理测试失败 ({test_url}): {type(e).__name__}: {str(e)[:80]}")
 
         logger.warning(f"❌ 代理不可用: {proxy_config['server']} (所有测试 URL 均失败)")
         return False

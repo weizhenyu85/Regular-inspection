@@ -88,10 +88,10 @@ def render_notification(platform_stats: Dict[str, Any]) -> str:
                 error = acc.get("error", "Unknown error")
                 lines.append(f"❌ {name}  失败: {error}")
 
-        # 平台小计
-        summary = f"小计 成功{stats['success']}/失败{stats['failed']}"
+        # 平台汇总（各平台分别计算）
+        summary = f"─ {platform} 汇总: 成功{stats['success']} | 失败{stats['failed']}"
         if stats["total_quota"] > 0 or stats["total_used"] > 0:
-            summary += f" · 余额${stats['total_quota']:.2f}"
+            summary += f" · 余额${stats['total_quota']:.2f} · 已用${stats['total_used']:.2f}"
         if stats["total_recharge"] != 0:
             summary += f" 📈{_fmt_change(stats['total_recharge'])}"
         lines.append(summary)

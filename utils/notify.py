@@ -118,9 +118,9 @@ class NotificationKit:
         if not self.pushplus_token:
             raise ValueError('PushPlus Token not configured')
 
-        # PushPlus 按 html 模板渲染，纯文本的换行/空格会被吞掉导致排版错乱；
-        # 用 <pre> 包裹保留原始换行与对齐
-        html_content = f'<pre>{content}</pre>'
+        # PushPlus 按 html 模板渲染会吞掉纯文本换行；用 <br/> 显式换行，
+        # 保持默认字体配色、可自动折行（不用 <pre>，避免出现横向滚动条）
+        html_content = content.replace('\n', '<br/>')
         data = {'token': self.pushplus_token, 'title': title, 'content': html_content, 'template': 'html'}
         with httpx.Client(timeout=30.0) as client:
             client.post('http://www.pushplus.plus/send', json=data)
@@ -131,8 +131,9 @@ class NotificationKit:
             raise ValueError('Server Push key not configured')
 
         url = f'https://sctapi.ftqq.com/{self.server_push_key}.send'
-        # Server酱 desp 按 markdown 渲染，单换行会被合并；用代码块包裹保留换行排版
-        data = {'title': title, 'desp': f'```\n{content}\n```'}
+        # Server酱 desp 按 markdown 渲染，单换行会被合并；行尾补两个空格是
+        # markdown 标准硬换行，保持默认样式（不用代码块，避免灰底和横向滚动条）
+        data = {'title': title, 'desp': content.replace('\n', '  \n')}
 
         with httpx.Client(timeout=30.0) as client:
             # 尝试 1: JSON 格式（Server酱 Turbo 版）
