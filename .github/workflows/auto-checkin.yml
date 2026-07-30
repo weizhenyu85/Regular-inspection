@@ -92,11 +92,15 @@ jobs:
 
           # 生成 Clash 配置文件
           echo "📝 生成 Clash 配置..."
-          # 节点过滤：非空时只在匹配的节点（如新加坡）里做 url-test，为空则用全部节点
+          # 节点过滤（agentrouter 组）：只用匹配的节点（如新加坡），组类型用 select，
+          # 便于通过 API 逐个切换节点、找到未被 CDN 滑块拦截的 IP；
+          # 无过滤的组保持 url-test 按延迟自动选点
           if [ -n "$NODE_FILTER" ]; then
             echo "🔎 节点过滤: $NODE_FILTER"
+            GROUP_TYPE="select"
             FILTER_LINE="    filter: \"${NODE_FILTER}\""
           else
+            GROUP_TYPE="url-test"
             FILTER_LINE=""
           fi
           cat > config.yaml << EOF
@@ -121,7 +125,7 @@ jobs:
 
           proxy-groups:
             - name: PROXY
-              type: url-test
+              type: ${GROUP_TYPE}
               use:
                 - my-provider
           ${FILTER_LINE}
@@ -136,6 +140,56 @@ jobs:
           cat config.yaml
           echo "========================="
 
+          # 生成节点扫描脚本：在 select 组内逐个切换节点，实测 AgentRouter 是否可达。
+          # 被 CDN 按 IP 拦截时返回滑块 HTML；正常时 /api/status 返回 JSON（含 "success"）。
+          # url-test 组（非 agentrouter）会自动跳过；签到步骤开跑前也会调用做校验。
+          cat > pick_node.sh << 'PICKEOF'
+          #!/bin/bash
+          API="http://127.0.0.1:9090"
+          PROXY="http://127.0.0.1:7890"
+          GROUP="PROXY"
+
+          TYPE=$(curl -s -m 5 "$API/proxies/$GROUP" | jq -r '.type' 2>/dev/null)
+          if [ "$TYPE" != "Selector" ]; then
+            exit 0
+          fi
+
+          test_node() {
+            for u in "https://agentrouter.org/api/status" "https://ps.air-outer.com/api/status"; do
+              if curl -x "$PROXY" -s -m 8 "$u" | head -c 300 | grep -q '"success"'; then
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          NOW=$(curl -s -m 5 "$API/proxies/$GROUP" | jq -r '.now')
+          echo "🔎 验证当前节点能否访问 AgentRouter: $NOW"
+          if test_node; then
+            echo "✅ 当前节点可用: $NOW"
+            exit 0
+          fi
+          echo "⚠️ 当前节点被滑块拦截，逐个扫描其它节点..."
+
+          mapfile -t NODES < <(curl -s -m 5 "$API/proxies/$GROUP" | jq -r '.all[]')
+          COUNT=0
+          for NODE in "${NODES[@]}"; do
+            [ "$NODE" = "$NOW" ] && continue
+            COUNT=$((COUNT+1))
+            [ "$COUNT" -gt 20 ] && break
+            curl -s -m 5 -X PUT "$API/proxies/$GROUP" -d "$(jq -cn --arg n "$NODE" '{name:$n}')" > /dev/null
+            sleep 1
+            if test_node; then
+              echo "✅ 已切换到可用节点: $NODE"
+              exit 0
+            fi
+            echo "  ✗ 被拦截: $NODE"
+          done
+          echo "❌ 扫描了 $COUNT 个节点均被拦截，保持当前节点继续"
+          exit 0
+          PICKEOF
+          chmod +x pick_node.sh
+
           # 启动 Clash（后台运行）
           # 用 setsid + </dev/null 让 Clash 脱离当前 step 的 shell 与控制终端，
           # 避免 step 结束 shell 退出时 Clash 收到 SIGHUP 被杀（导致下个 step 7890 失联）
@@ -144,22 +198,46 @@ jobs:
           CLASH_PID=$!
           echo "Clash PID: $CLASH_PID"
 
-          # 轮询等待代理就绪（CI 现装 mihomo + 拉订阅 + 节点健康检查需要时间，
-          # 固定 sleep 往往不够；这里最多等 90 秒直到 7890 能真正出网）
-          echo "⏳ 等待代理就绪（最多 90 秒）..."
-          READY=0
-          for i in $(seq 1 18); do
+          # 等待外部控制器就绪（Clash 启动 + 拉订阅需要时间）
+          echo "⏳ 等待 Clash 控制器就绪..."
+          for i in $(seq 1 12); do
             sleep 5
-            CODE=$(curl -x http://127.0.0.1:7890 -s -m 8 -o /dev/null -w "%{http_code}" http://www.gstatic.com/generate_204 || echo 000)
-            echo "  第 ${i} 次探测（$((i*5))s）: HTTP ${CODE}"
-            if [ "$CODE" = "204" ] || [ "$CODE" = "200" ]; then
-              READY=1
-              echo "✅ Clash 代理已就绪（约 $((i*5)) 秒）"
+            if curl -s -m 3 "http://127.0.0.1:9090/version" > /dev/null 2>&1; then
+              echo "✅ 控制器已就绪（约 $((i*5)) 秒）"
               break
             fi
           done
+
+          # 等待订阅节点加载进 PROXY 组
+          NODE_COUNT=0
+          for i in $(seq 1 12); do
+            NODE_COUNT=$(curl -s -m 5 "http://127.0.0.1:9090/proxies/PROXY" | jq -r '.all | length' 2>/dev/null || echo 0)
+            if [ "${NODE_COUNT:-0}" -gt 0 ]; then break; fi
+            sleep 5
+          done
+          echo "📦 PROXY 组节点数: ${NODE_COUNT:-0}"
+          if [ "${NODE_COUNT:-0}" = "0" ]; then
+            echo "⚠️ 订阅未加载到任何节点（可能被节点过滤筛空或订阅拉取失败），Clash 日志尾部："
+            tail -n 40 clash.log || true
+          fi
+
+          # agentrouter（select 组）：逐个节点实测 AgentRouter 可达性，跳过被滑块拦截的 IP
+          ./pick_node.sh || true
+
+          # 最终连通性确认
+          READY=0
+          for i in $(seq 1 6); do
+            CODE=$(curl -x http://127.0.0.1:7890 -s -m 8 -o /dev/null -w "%{http_code}" http://www.gstatic.com/generate_204 || echo 000)
+            echo "  连通性探测 ${i}: HTTP ${CODE}"
+            if [ "$CODE" = "204" ] || [ "$CODE" = "200" ]; then
+              READY=1
+              echo "✅ Clash 代理已就绪"
+              break
+            fi
+            sleep 5
+          done
           if [ "$READY" != "1" ]; then
-            echo "⚠️ 代理在 90 秒内仍未就绪，打印 Clash 日志尾部用于诊断："
+            echo "⚠️ 代理仍未就绪，打印 Clash 日志尾部用于诊断："
             tail -n 40 clash.log || true
             echo "（继续执行，签到会回退直连）"
           fi
@@ -228,6 +306,11 @@ jobs:
                 echo "⚠️ 代理重启后仍未就绪，打印 Clash 日志尾部："
                 tail -n 40 clash.log || true
               fi
+            fi
+            # 开跑前校验：当前节点若被 CDN 滑块拦截则自动切换（仅 select 组生效，
+            # 覆盖「代理在线但节点 IP 被 Aliyun 标记」的场景）
+            if [ -x ./pick_node.sh ]; then
+              ./pick_node.sh || true
             fi
           fi
           python main.py
