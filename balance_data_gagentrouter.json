@@ -2,16 +2,16 @@
   "AgentRouter1_email": {
     "quota": 425.0,
     "used": 0.0,
-    "timestamp": 1785918798.402126
+    "timestamp": 1785938684.6928391
   },
   "AgentRouter2_email": {
     "quota": 669.73,
     "used": 55.27,
-    "timestamp": 1785918808.4174445
+    "timestamp": 1785938694.1561735
   },
   "AgentRouter3_email": {
-    "quota": 999.28,
-    "used": 1705.72,
-    "timestamp": 1785918818.2118917
+    "quota": 997.36,
+    "used": 1707.64,
+    "timestamp": 1785938703.2502003
   }
 }
