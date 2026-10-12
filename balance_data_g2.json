@@ -15,23 +15,23 @@
     "timestamp": 1785292162.3070638
   },
   "AnyRouter12_cookies": {
-    "quota": 6241.15,
+    "quota": 6266.15,
     "used": 33.85,
-    "timestamp": 1791500081.451418
+    "timestamp": 1791769099.3233533
   },
   "AnyRouter11_cookies": {
-    "quota": 6004.04,
+    "quota": 6029.04,
     "used": 220.96,
-    "timestamp": 1791500072.5141423
+    "timestamp": 1791769091.052583
   },
   "AnyRouter13_cookies": {
-    "quota": 4967.09,
+    "quota": 4992.09,
     "used": 1482.91,
-    "timestamp": 1791500091.2653713
+    "timestamp": 1791769107.752633
   },
   "AnyRouter14_cookies": {
-    "quota": 2869.28,
-    "used": 5280.72,
-    "timestamp": 1791500100.170701
+    "quota": 2916.55,
+    "used": 5283.45,
+    "timestamp": 1791769116.9577498
   }
 }
